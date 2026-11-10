@@ -10,10 +10,13 @@ package is the interactive surface inside OpenCode.
 
 ## What it adds
 
-- A `synarch` primary agent you select with `/agents`.
-- `synarch_delegate`: work is handed to a child session running the built-in
-  `build` agent. Jury, Actor, Critic and QA are instruction profiles, not
-  restricted tool sets.
+- A `synarch` primary agent you select with `/agents`. It coordinates the
+  workflow; it does not edit source and does not approve work.
+- `synarch_delegate`: work is handed to a fresh child session running the
+  built-in `build` agent. Jury, Actor, Critic and QA are instruction profiles,
+  not restricted tool sets. The Jury owns technical acceptance, the Actor
+  implements, the Critic reviews independently, and QA verifies only after the
+  Jury accepts.
 - `synarch_propose`: an isolated worktree run. It validates the repository, task
   and checks, stores a pending proposal, and creates nothing until you approve it
   in `/synarch`.
@@ -25,6 +28,21 @@ package is the interactive surface inside OpenCode.
 All Synarch agents run with your normal build configuration: your model, MCP
 servers, permissions and instructions. Roles differ only in the brief the plugin
 attaches to each worker.
+
+## Roles
+
+| Role | Authority | Responsibility |
+| --- | --- | --- |
+| Orchestrator | Operational | Interprets the request, schedules work, routes handoffs and reports progress. Does not approve and does not edit source. |
+| Jury | Technical decision | Sets constraints and acceptance criteria, evaluates evidence, accepts/rejects/rework, keeps the decision ledger. |
+| Actor | Execution | Implements, tests and does initial verification. Cannot approve its own work. |
+| Critic | Advisory | Independent review of correctness, security, regressions and trade-offs. Does not edit production code. |
+| QA | Release-blocking | Independent behavioural verification after Jury acceptance. Does not modify the accepted implementation. |
+
+Behavioural changes run Jury → Actor → Critic → Jury decision → QA. A trivial
+non-behavioural change may take the lightweight path Jury → Actor → Jury → QA.
+Mandatory verification failures cannot be waived by agent agreement.
+
 
 ## Requirements
 
@@ -70,11 +88,14 @@ Then run `/reload`, open `/agents`, and select **synarch**.
 Fix the failing test in this module and run the focused check.
 ```
 
-Small tasks are handled directly. For larger work the orchestrator delegates:
+The orchestrator investigates and reviews; it does not edit. Every source change is
+delegated: the Jury sets the plan and acceptance criteria, the Actor implements, the
+Critic reviews behavioural changes, the Jury accepts or requests rework, and QA verifies
+the accepted result.
 
 ```text
-Use the jury to map how the flush path works, then have the actor implement the
-lock ordering fix and the qa verify it under concurrency.
+Map how the flush path works, then implement the lock ordering fix with a concurrency
+regression test. Keep the public API stable.
 ```
 
 For isolation:
@@ -96,14 +117,19 @@ Synarch session there, then hands it the task, baseline and checks.
   and a later process all read the same state.
 - Workers are child sessions with `agent: "build"`, the parent's selected model,
   a `synarch_role` metadata entry, and a role brief prepended to the task.
+- The orchestrator is crew-first: it investigates, schedules and reviews, but every
+  source change goes through the Actor. A trivial non-behavioural change may skip the
+  Critic; Jury acceptance and QA verification remain.
 - Isolated runs use OpenCode's own worktree support and a fresh `synarch`
   session moved into that worktree, so shell commands and edits run there, not
   just "as instructed". The native session tree and tabs show the run too.
 
 ## Limits
 
-- Roles are instructions, not a security boundary. Every worker can edit files
-  and run commands.
+- Roles are instructions, not a security boundary. Every worker and the
+  orchestrator can technically edit files and run commands; the orchestrator is told
+  not to edit, but nothing enforces that. Use the controller when acceptance must be
+  mechanically enforced.
 - Direct work changes the checkout immediately and spends provider allowance.
   Only isolated-run creation is gated by the approval panel.
 - There is no sandbox beyond what OpenCode and your OS provide. A worktree

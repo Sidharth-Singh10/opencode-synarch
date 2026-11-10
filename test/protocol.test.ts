@@ -108,4 +108,7 @@ test("the run brief carries the worktree, baseline and approval rules", () => {
   assert.match(brief, /Baseline: abc123/);
   assert.match(brief, /tests: cargo test/);
   assert.match(brief, /explicit approval/);
+  assert.match(brief, /crew-first/i);
+  assert.match(brief, /QA verifies only after Jury acceptance/);
+  assert.doesNotMatch(brief, /Handle small work directly/);
 });
