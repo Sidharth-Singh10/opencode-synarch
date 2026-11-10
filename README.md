@@ -4,8 +4,9 @@ Synarch as an OpenCode plugin: one orchestrator agent, build-capable workers, an
 live agent activity in the OpenCode TUI.
 
 This replaces Synarch's separate browser console. The Synarch Rust CLI and its
-evidence-gated controller remain a separate product; this package is the
-interactive surface inside OpenCode.
+evidence-gated controller remain a separate product:
+[`Sidharth-Singh10/synarch`](https://github.com/Sidharth-Singh10/synarch). This
+package is the interactive surface inside OpenCode.
 
 ## What it adds
 
