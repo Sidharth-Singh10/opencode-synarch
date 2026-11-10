@@ -15,6 +15,7 @@ import {
 } from "./protocol.js";
 import type { Proposal } from "./protocol.js";
 import { SynarchRpc } from "./rpc.js";
+import { isSessionRunning } from "./status.js";
 
 type SessionInfo = NonNullable<ReturnType<Context["data"]["session"]["get"]>>;
 
@@ -86,11 +87,11 @@ function statusColor(ctx: Context, status: "idle" | "running") {
 function AgentRow(props: { ctx: Context; id: string }) {
   const session = () => props.ctx.data.session.get(props.id);
   const status = () => props.ctx.data.session.status(props.id);
-  const running = () => status() === "running";
+  const running = () => isSessionRunning(session(), status());
   return (
     <box flexDirection="column">
       <box flexDirection="row" gap={1}>
-        <text fg={statusColor(props.ctx, status())}>{running() ? "●" : "○"}</text>
+        <text fg={statusColor(props.ctx, running() ? "running" : "idle")}>{running() ? "●" : "○"}</text>
         <text fg={props.ctx.theme.text.base}>{roleOf(session())}</text>
         <text fg={props.ctx.theme.text.faint}>{running() ? "running" : "idle"}</text>
       </box>
