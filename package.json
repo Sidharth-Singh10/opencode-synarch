@@ -1,0 +1,52 @@
+{
+  "name": "opencode-synarch",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Synarch orchestration for OpenCode: one orchestrator, build-capable workers, live agent activity.",
+  "license": "MIT",
+  "bin": {
+    "opencode-synarch": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./tui": {
+      "types": "./dist/src/tui.d.ts",
+      "import": "./dist/src/tui.js"
+    },
+    "./rpc": {
+      "types": "./dist/src/rpc.d.ts",
+      "import": "./dist/src/rpc.js"
+    }
+  },
+  "files": [
+    "dist",
+    "agents",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test dist/test/",
+    "prepare": "npm run build"
+  },
+  "peerDependencies": {
+    "@opencode/plugin": "2.2.7",
+    "@opentui/core": ">=0.8.1",
+    "@opentui/solid": ">=0.8.1",
+    "solid-js": ">=1.9.0"
+  },
+  "devDependencies": {
+    "@opencode/client": "2.2.7",
+    "@opencode/plugin": "2.2.7",
+    "@opencode/schema": "2.2.7",
+    "@opencode/theme": "^2.2.7",
+    "@opentui/core": "^0.8.1",
+    "@opentui/solid": "^0.8.1",
+    "@types/node": "^24.0.0",
+    "solid-js": "^1.9.9",
+    "typescript": "^5.9.0"
+  }
+}
