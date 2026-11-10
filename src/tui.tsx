@@ -2,7 +2,17 @@ import { For, Show, createEffect, createMemo } from "solid-js";
 import { Plugin, usePlugin } from "@opencode/plugin/tui";
 import type { Context, SlotMap } from "@opencode/plugin/tui/context";
 
-import { PROPOSAL_KEY, ROLE_KEY, ROLE_LABELS, Role, RUN_KEY, RunRecord, shortTask } from "./protocol.js";
+import {
+  PLUGIN_ID,
+  PLUGIN_KEY,
+  PROPOSAL_KEY,
+  ROLE_KEY,
+  ROLE_LABELS,
+  Role,
+  RUN_KEY,
+  RunRecord,
+  shortTask,
+} from "./protocol.js";
 import type { Proposal } from "./protocol.js";
 import { SynarchRpc } from "./rpc.js";
 
@@ -13,6 +23,11 @@ const PANEL = "synarch.panel";
 function readObject<T>(session: SessionInfo | undefined, key: string): T | null {
   const value = session?.metadata?.[key];
   return value && typeof value === "object" ? (value as T) : null;
+}
+
+function readRun(session: SessionInfo | undefined): RunRecord | null {
+  if (session?.metadata?.[PLUGIN_KEY] !== PLUGIN_ID) return null;
+  return readObject<RunRecord>(session, RUN_KEY);
 }
 
 function family(ctx: Context, sessionID: string): string[] {
@@ -29,8 +44,8 @@ function isSynarch(ctx: Context, sessionID: string): boolean {
     const session = ctx.data.session.get(id);
     return (
       session?.agent === "synarch" ||
-      Boolean(session?.metadata?.[ROLE_KEY]) ||
-      Boolean(session?.metadata?.["synarch_kind"])
+      session?.metadata?.[PLUGIN_KEY] === PLUGIN_ID ||
+      Boolean(session?.metadata?.[ROLE_KEY])
     );
   });
 }
@@ -144,9 +159,7 @@ function SynarchPanel(props: { panel: SlotMap["session.panel"] }) {
     const id = session()?.metadata?.["synarch_last_run"];
     return typeof id === "string" ? ctx.data.session.get(id) : undefined;
   };
-  const run = createMemo(
-    () => readObject<RunRecord>(lastRunSession(), RUN_KEY) ?? readObject<RunRecord>(session(), RUN_KEY),
-  );
+  const run = createMemo(() => readRun(lastRunSession()) ?? readRun(session()));
   const ids = createMemo(() => family(ctx, props.panel.sessionID));
   const directory = () => {
     const info = session();

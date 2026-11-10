@@ -8,6 +8,8 @@ export const PROPOSAL_KEY = "synarch_proposal";
 export const RUN_KEY = "synarch_run";
 export const ROLE_KEY = "synarch_role";
 export const ROOT_KEY = "synarch_root";
+export const PLUGIN_KEY = "synarch_plugin";
+export const PLUGIN_ID = "opencode-synarch";
 
 export type Role = "jury" | "actor" | "critic" | "qa";
 

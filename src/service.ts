@@ -1,6 +1,8 @@
 import {
   Check,
   KIND_KEY,
+  PLUGIN_ID,
+  PLUGIN_KEY,
   PROPOSAL_KEY,
   Proposal,
   ProposalInput,
@@ -240,6 +242,7 @@ export class SynarchService {
       title: `Synarch run · ${shortTask(proposal.task)}`,
       metadata: {
         [KIND_KEY]: "run",
+        [PLUGIN_KEY]: PLUGIN_ID,
         [ROOT_KEY]: sessionID,
         [RUN_KEY]: { ...record, sessionID: "pending" },
       },
@@ -284,7 +287,12 @@ export class SynarchService {
       agent,
       model: session.model ?? undefined,
       title: `${ROLE_LABELS[role]} · ${shortTask(task, 48)}`,
-      metadata: { [KIND_KEY]: "worker", [ROLE_KEY]: role, [ROOT_KEY]: root },
+      metadata: {
+        [KIND_KEY]: "worker",
+        [PLUGIN_KEY]: PLUGIN_ID,
+        [ROLE_KEY]: role,
+        [ROOT_KEY]: root,
+      },
     });
     await this.host.session.prompt({
       sessionID: child.id,
@@ -358,6 +366,9 @@ export class SynarchService {
   }
 
   private readRun(session: SessionInfoLike): RunRecord | null {
+    // The old browser console used the same metadata key. Only trust runs this
+    // plugin created, so legacy sessions cannot be approved, shown or interrupted.
+    if (session.metadata?.[PLUGIN_KEY] !== PLUGIN_ID) return null;
     const value = session.metadata?.[RUN_KEY];
     if (!value || typeof value !== "object") return null;
     const raw = value as Partial<RunRecord>;

@@ -260,6 +260,7 @@ test("delegation creates a build-capable child with the role brief", async () =>
   assert.deepEqual(created.model, { providerID: "test", id: "model" });
   assert.equal(created.parentID, "ses_root");
   assert.equal(created.metadata?.synarch_role, "jury");
+  assert.equal(created.metadata?.synarch_plugin, "opencode-synarch");
   assert.match(String(created.title), /^Jury · map the flush path/);
 
   const prompt = host.prompts[0]!;
@@ -297,6 +298,30 @@ test("state survives a service restart through session metadata", async () => {
   const restarted = new SynarchService(host);
   const state = await restarted.state("ses_root");
   assert.equal(state.proposal?.id, id);
+});
+
+test("legacy console metadata is not treated as a plugin run", async () => {
+  const host = new FakeHost();
+  host.sessions.set("ses_legacy", {
+    id: "ses_legacy",
+    projectID: "proj",
+    agent: "synarch-orchestrator",
+    location: { directory: host.root },
+    metadata: {
+      synarch_kind: "run",
+      synarch_run: {
+        sessionID: "ses_legacy",
+        repository: host.root,
+        worktree: "/old/worktree",
+        baseline: "abc",
+        task: "legacy task",
+        checks: [],
+        createdAt: 1,
+      },
+    },
+  });
+  const state = await makeService(host).service.state("ses_legacy");
+  assert.equal(state.run, null);
 });
 
 test("interrupt is reported and announced", async () => {
