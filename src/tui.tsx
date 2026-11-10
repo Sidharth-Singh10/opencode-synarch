@@ -140,7 +140,13 @@ function SynarchPanel(props: { panel: SlotMap["session.panel"] }) {
   const root = () => ctx.data.session.root(props.panel.sessionID);
   const session = () => ctx.data.session.get(root());
   const proposal = createMemo(() => readObject<Proposal>(session(), PROPOSAL_KEY));
-  const run = createMemo(() => readObject<RunRecord>(session(), RUN_KEY));
+  const lastRunSession = () => {
+    const id = session()?.metadata?.["synarch_last_run"];
+    return typeof id === "string" ? ctx.data.session.get(id) : undefined;
+  };
+  const run = createMemo(
+    () => readObject<RunRecord>(lastRunSession(), RUN_KEY) ?? readObject<RunRecord>(session(), RUN_KEY),
+  );
   const ids = createMemo(() => family(ctx, props.panel.sessionID));
   const directory = () => {
     const info = session();
