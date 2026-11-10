@@ -34,6 +34,7 @@ function toInfo(session: {
   parentID?: string | null;
   projectID: string;
   agent?: string | null;
+  model?: { providerID: string; id: string; variant?: string } | null;
   title?: string | null;
   metadata?: unknown;
   location: { directory: string };
@@ -43,6 +44,7 @@ function toInfo(session: {
     parentID: session.parentID ?? null,
     projectID: session.projectID,
     agent: session.agent ?? null,
+    model: session.model ?? null,
     title: session.title ?? null,
     metadata:
       session.metadata && typeof session.metadata === "object"
@@ -115,6 +117,7 @@ function hostFor(ctx: PluginContext): Host {
             parentID: input.parentID,
             title: input.title,
             agent: input.agent,
+            model: input.model,
             location: input.location ? { directory: input.location.directory } : undefined,
             metadata: input.metadata ? asMetadata(input.metadata) : undefined,
           }),
@@ -123,6 +126,8 @@ function hostFor(ctx: PluginContext): Host {
         await ctx.session.update({ sessionID, metadata: asMetadata(metadata) });
       },
       prompt: ({ sessionID, text }) => ctx.session.prompt({ sessionID, text }),
+      move: ({ sessionID, directory }) => ctx.session.move({ sessionID, directory }),
+      remove: ({ sessionID }) => ctx.session.remove({ sessionID }),
       wait: ({ sessionID }) => ctx.session.wait({ sessionID }),
       interrupt: ({ sessionID }) => ctx.session.interrupt({ sessionID }),
       context: ({ sessionID }) => ctx.session.context({ sessionID }),

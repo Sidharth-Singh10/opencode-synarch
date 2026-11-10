@@ -188,8 +188,11 @@ function SynarchPanel(props: { panel: SlotMap["session.panel"] }) {
   const interrupt = async () => {
     const target = run()?.sessionID ?? props.panel.sessionID;
     try {
-      await rpc().interrupt({ sessionID: target });
-      ctx.ui.toast.show({ message: "Interrupted", variant: "warning" });
+      const result = (await rpc().interrupt({ sessionID: target })) as { interrupted: boolean };
+      ctx.ui.toast.show({
+        message: result.interrupted ? "Interrupted" : "Nothing was running",
+        variant: result.interrupted ? "warning" : "info",
+      });
     } catch (error) {
       ctx.ui.toast.show({ message: errorMessage(error), variant: "error", duration: 8000 });
     }

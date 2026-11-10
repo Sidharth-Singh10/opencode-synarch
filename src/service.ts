@@ -24,6 +24,7 @@ export interface SessionInfoLike {
   parentID?: string | null;
   projectID: string;
   agent?: string | null;
+  model?: { providerID: string; id: string; variant?: string } | null;
   title?: string | null;
   metadata?: Record<string, unknown> | null;
   location: { directory: string };
@@ -33,6 +34,7 @@ export interface SessionCreateLike {
   parentID?: string;
   title?: string;
   agent?: string;
+  model?: { providerID: string; id: string; variant?: string };
   location?: { directory: string };
   metadata?: Record<string, unknown>;
 }
@@ -53,6 +55,8 @@ export interface Host {
     create(input: SessionCreateLike): Promise<SessionInfoLike>;
     update(input: { sessionID: string; metadata: Record<string, unknown> }): Promise<void>;
     prompt(input: { sessionID: string; text: string }): Promise<unknown>;
+    move(input: { sessionID: string; directory: string }): Promise<unknown>;
+    remove(input: { sessionID: string }): Promise<unknown>;
     wait(input: { sessionID: string }): Promise<unknown>;
     interrupt(input: { sessionID: string }): Promise<unknown>;
     context(input: { sessionID: string }): Promise<unknown>;
@@ -232,14 +236,21 @@ export class SynarchService {
     const runSession = await this.host.session.create({
       parentID: sessionID,
       agent: "synarch",
+      model: session.model ?? undefined,
       title: `Synarch run · ${shortTask(proposal.task)}`,
-      location: { directory: worktree.directory },
       metadata: {
         [KIND_KEY]: "run",
         [ROOT_KEY]: sessionID,
         [RUN_KEY]: { ...record, sessionID: "pending" },
       },
     });
+    try {
+      // The session must actually work inside the worktree, not just be told about it.
+      await this.host.session.move({ sessionID: runSession.id, directory: worktree.directory });
+    } catch (error) {
+      await this.host.session.remove({ sessionID: runSession.id });
+      throw new Error(`could not move the run session into its worktree: ${errorMessage(error)}`);
+    }
     const finished: RunRecord = { ...record, sessionID: runSession.id };
     await this.host.session.update({
       sessionID: runSession.id,
@@ -271,6 +282,7 @@ export class SynarchService {
     const child = await this.host.session.create({
       parentID: sessionID,
       agent,
+      model: session.model ?? undefined,
       title: `${ROLE_LABELS[role]} · ${shortTask(task, 48)}`,
       metadata: { [KIND_KEY]: "worker", [ROLE_KEY]: role, [ROOT_KEY]: root },
     });
@@ -368,6 +380,11 @@ export class SynarchService {
       createdAt: typeof raw.createdAt === "number" ? raw.createdAt : 0,
     };
   }
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  return String(error);
 }
 
 /** Extract the last assistant text from an OpenCode session context payload. */

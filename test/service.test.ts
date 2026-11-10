@@ -10,11 +10,14 @@ class FakeHost implements Host {
   readonly prompts: { sessionID: string; text: string }[] = [];
   readonly updates: { sessionID: string; metadata: Record<string, unknown> }[] = [];
   readonly waits: string[] = [];
+  readonly moves: { sessionID: string; directory: string }[] = [];
+  readonly removed: string[] = [];
   readonly interrupted: string[] = [];
   readonly trees: { projectID: string; name: string }[] = [];
   readonly gitCalls: { directory: string; args: string[] }[] = [];
   readonly gitResults = new Map<string, string>();
   checks: Check[] = [];
+  failMove = false;
   reply = "worker reply";
   events: string[] = [];
   private sequence = 0;
@@ -25,6 +28,7 @@ class FakeHost implements Host {
       id: "ses_root",
       projectID: "proj",
       agent: "synarch",
+      model: { providerID: "test", id: "model" },
       title: "Synarch",
       location: { directory: root },
       metadata: {},
@@ -80,6 +84,7 @@ class FakeHost implements Host {
         parentID: input.parentID ?? null,
         projectID: "proj",
         agent: input.agent ?? null,
+        model: input.model ?? null,
         title: input.title ?? null,
         metadata: input.metadata ?? {},
         location: input.location ?? { directory: this.root },
@@ -95,6 +100,16 @@ class FakeHost implements Host {
     },
     prompt: async ({ sessionID, text }: { sessionID: string; text: string }): Promise<void> => {
       this.prompts.push({ sessionID, text });
+    },
+    move: async ({ sessionID, directory }: { sessionID: string; directory: string }): Promise<void> => {
+      if (this.failMove) throw new Error("move refused");
+      this.moves.push({ sessionID, directory });
+      const session = this.sessions.get(sessionID);
+      if (session) session.location = { directory };
+    },
+    remove: async ({ sessionID }: { sessionID: string }): Promise<void> => {
+      this.removed.push(sessionID);
+      this.sessions.delete(sessionID);
     },
     wait: async ({ sessionID }: { sessionID: string }): Promise<void> => {
       this.waits.push(sessionID);
@@ -184,8 +199,10 @@ test("approval creates a worktree, a Synarch run session and a handoff", async (
   const created = host.creates[0]!;
   assert.equal(created.agent, "synarch");
   assert.equal(created.parentID, "ses_root");
-  assert.equal(created.location?.directory, result.worktree);
+  assert.deepEqual(created.model, { providerID: "test", id: "model" });
   assert.equal(created.metadata?.synarch_kind, "run");
+  assert.deepEqual(host.moves, [{ sessionID: result.runSessionID, directory: result.worktree }]);
+  assert.deepEqual(host.removed, []);
   assert.equal(created.metadata?.synarch_root, "ses_root");
 
   const prompt = host.prompts.find((entry) => entry.sessionID === result.runSessionID);
@@ -212,6 +229,17 @@ test("approval re-checks the working tree and rejects a stale proposal", async (
   await assert.rejects(second.service.approve("ses_root", "wrong"), /no longer pending/);
 });
 
+test("a failed move removes the run session and keeps the proposal pending", async () => {
+  const host = new FakeHost();
+  const { service, id } = await proposed(host);
+  host.failMove = true;
+  await assert.rejects(service.approve("ses_root", id), /could not move the run session/);
+  assert.deepEqual(host.removed, ["ses_1"]);
+  assert.deepEqual(host.prompts, []);
+  const state = await service.state("ses_root");
+  assert.equal(state.proposal?.id, id);
+});
+
 test("rejection clears the proposal", async () => {
   const host = new FakeHost();
   const { service, id, events } = await proposed(host);
@@ -229,6 +257,7 @@ test("delegation creates a build-capable child with the role brief", async () =>
 
   const created = host.creates[0]!;
   assert.equal(created.agent, "build");
+  assert.deepEqual(created.model, { providerID: "test", id: "model" });
   assert.equal(created.parentID, "ses_root");
   assert.equal(created.metadata?.synarch_role, "jury");
   assert.match(String(created.title), /^Jury · map the flush path/);

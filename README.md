@@ -93,10 +93,11 @@ Synarch session there, then hands it the task, baseline and checks.
   a small RPC (`approve`, `reject`, `interrupt`).
 - Proposals and run records live in session metadata, so the TUI, other clients
   and a later process all read the same state.
-- Workers are child sessions with `agent: "build"`, a `synarch_role` metadata
-  entry, and a role brief prepended to the task.
+- Workers are child sessions with `agent: "build"`, the parent's selected model,
+  a `synarch_role` metadata entry, and a role brief prepended to the task.
 - Isolated runs use OpenCode's own worktree support and a fresh `synarch`
-  session, so the native session tree and tabs show them too.
+  session moved into that worktree, so shell commands and edits run there, not
+  just "as instructed". The native session tree and tabs show the run too.
 
 ## Limits
 
@@ -109,7 +110,7 @@ Synarch session there, then hands it the task, baseline and checks.
 - If the OpenCode server restarts between proposing and approving, the proposal
   is gone; ask the orchestrator to propose again.
 - `build` must be available as an agent (it is a built-in). Override the worker
-  agent with plugin options if you have a better one.
+  agent with the plugin option `workerAgent` if you have a better one.
 
 ## Development
 
